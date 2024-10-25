@@ -13,7 +13,6 @@ struct NODE *findNode(struct NODE *current, const char *target)
     // target is found
     if (strcmp(current->name, target) == 0)
     {
-        // printf("Target is found: %s\n", current->name);
         return current;
     }
 
@@ -21,12 +20,10 @@ struct NODE *findNode(struct NODE *current, const char *target)
     struct NODE *foundInChild = findNode(current->childPtr, target);
     if (foundInChild != NULL)
     {
-        // printf("Found in child: %s\n", foundInChild->name);
         return foundInChild;
     }
 
     // recursively search children
-    // printf("Found in sibling: %s\n", current->siblingPtr->name);
     return findNode(current->siblingPtr, target);
 }
 
@@ -148,6 +145,13 @@ void mkdir(char pathName[])
 
     struct NODE *dirNode = splitPath(pathName, baseName, dirName);
 
+    // check cwd for dirName
+    if (findNodeInChildren(cwd, dirName) == NULL)
+    {
+        printf("ERROR: directory %s does not exist\n", dirName);
+        return;
+    }
+
     if (dirNode == NULL)
     {
         printf("ERROR: Parent directory %s does not exist\n", dirName);
@@ -156,8 +160,6 @@ void mkdir(char pathName[])
         return;
     }
 
-    // printf("CHECK:\n");
-    // Check if baseName already exists in the parentDir
     struct NODE *check = findNodeInChildren(dirNode, baseName);
     // struct NODE *check = findNode(dirNode, baseName);
     if (check != NULL)
@@ -171,8 +173,6 @@ void mkdir(char pathName[])
     createNode(baseName, dirNode); // Create the new directory node
 
     printf("MKDIR SUCCESS: node %s successfully created\n", pathName);
-    // printf("FINAL TREE: \n");
-    // printTree();
 
     free(baseName);
     free(dirName);
