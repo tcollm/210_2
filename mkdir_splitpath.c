@@ -13,6 +13,7 @@ struct NODE *findNode(struct NODE *current, const char *target)
     // target is found
     if (strcmp(current->name, target) == 0)
     {
+        // printf("Target is found: %s\n", current->name);
         return current;
     }
 
@@ -20,18 +21,13 @@ struct NODE *findNode(struct NODE *current, const char *target)
     struct NODE *foundInChild = findNode(current->childPtr, target);
     if (foundInChild != NULL)
     {
+        // printf("Found in child: %s\n", foundInChild->name);
         return foundInChild;
     }
 
     // recursively search children
-    struct NODE *foundInSibling = findNode(current->siblingPtr, target);
-    if (foundInSibling != NULL)
-    {
-        return foundInSibling;
-    }
-
-    // not found
-    return NULL;
+    // printf("Found in sibling: %s\n", current->siblingPtr->name);
+    return findNode(current->siblingPtr, target);
 }
 
 struct NODE *splitPath(char *pathName, char *baseName, char *dirName)
@@ -52,19 +48,21 @@ struct NODE *splitPath(char *pathName, char *baseName, char *dirName)
     }
 
     // assign baseName and dirName
-    // if there are no '/' then assign dirName to the root
+    // if there are no '/' then assign dirName to the cwd
     // and assign the pathName to baseName
     if (lastIndex == -1)
     {
-        dirName[0] = '/';
+        // dirName[0] = '/';
+        strcpy(dirName, cwd->name);
+        // dirName[1] = '\0';
         strcpy(baseName, pathName);
     }
     else
     {
         strncpy(dirName, pathName, lastIndex);
+        dirName[lastIndex] = '\0';
         strcpy(baseName, pathName + lastIndex + 1);
     }
-    dirName[lastIndex] = '\0'; // Null-terminate dirName
 
     // start at root if path starts with '/'
     struct NODE *start = (dirName[0] == '/') ? root : cwd;
@@ -80,9 +78,7 @@ struct NODE *splitPath(char *pathName, char *baseName, char *dirName)
     else
     {
         // if dirName is not a directory then return ERROR
-        printf("ERROR: '%s' is not a valid directory path\n", dirName);
-        free(baseName);
-        free(dirName);
+        printf("ERROR: %s is not a valid directory path\n", dirName);
         return NULL;
     }
 }
@@ -104,15 +100,14 @@ void createNode(char *baseName, struct NODE *parentDir)
     newNode->parentPtr = parentDir;
 
     // attach to parent
-    struct NODE *child = parentDir->childPtr;
-
     // parent's child is empty
-    if (child == NULL)
+    if (parentDir->childPtr == NULL)
     {
         parentDir->childPtr = newNode;
     }
     else
     {
+        struct NODE *child = parentDir->childPtr;
         // parent's child is not empty, search for next empty sibling
         while (child->siblingPtr != NULL)
         {
@@ -122,11 +117,29 @@ void createNode(char *baseName, struct NODE *parentDir)
     }
 }
 
+struct NODE *findNodeInChildren(struct NODE *current, const char *target)
+{
+    // check self and then iterate to child (fixes sibling check error)
+    if (strcmp(current->name, target) == 0)
+    {
+        return current;
+    }
+    current = current->childPtr;
+
+    // This function specifically checks only the children of the provided current node
+    while (current != NULL)
+    {
+        if (strcmp(current->name, target) == 0)
+        {
+            return current; // Return if the target is found
+        }
+        current = current->siblingPtr; // Move to the next sibling
+    }
+    return NULL; // Not found
+}
+
 void mkdir(char pathName[])
 {
-    printf("INITIAL TREE: \n");
-    printTree();
-
     char *baseName = (char *)malloc(sizeof(char) * 256);
     char *dirName = (char *)malloc(sizeof(char) * 256);
 
@@ -137,16 +150,19 @@ void mkdir(char pathName[])
 
     if (dirNode == NULL)
     {
-        printf("ERROR: Parent directory '%s' does not exist\n", dirName);
+        printf("ERROR: Parent directory %s does not exist\n", dirName);
         free(baseName);
         free(dirName);
         return;
     }
 
+    // printf("CHECK:\n");
     // Check if baseName already exists in the parentDir
-    if (findNode(dirNode, baseName) != NULL)
+    struct NODE *check = findNodeInChildren(dirNode, baseName);
+    // struct NODE *check = findNode(dirNode, baseName);
+    if (check != NULL)
     {
-        printf("ERROR: '%s' already exists in directory '%s'\n", baseName, dirName);
+        printf("ERROR: %s already exists in directory '%s'\n", baseName, dirName);
         free(baseName);
         free(dirName);
         return;
@@ -154,9 +170,9 @@ void mkdir(char pathName[])
 
     createNode(baseName, dirNode); // Create the new directory node
 
-    printf("MKDIR SUCCESS: node '%s' successfully created\n", pathName);
-    printf("FINAL TREE: \n");
-    printTree();
+    printf("MKDIR SUCCESS: node %s successfully created\n", pathName);
+    // printf("FINAL TREE: \n");
+    // printTree();
 
     free(baseName);
     free(dirName);
